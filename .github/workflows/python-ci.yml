@@ -1,0 +1,99 @@
+name: Python CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+    name: Unit Tests (${{ matrix.python-version }})
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: 'python-app/requirements*.txt'
+      
+      - name: Install dependencies
+        run: |
+          cd python-app
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Run tests with coverage
+        run: cd python-app && pytest tests/ --cov=. --cov-report=xml --cov-report=term
+
+  lint:
+    runs-on: ubuntu-latest
+    name: Code Quality Checks
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'python-app/requirements*.txt'
+      
+      - name: Install dependencies
+        run: |
+          cd python-app
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Run flake8
+        run: cd python-app && flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        continue-on-error: true
+      
+      - name: Run black
+        run: cd python-app && black --check . || true
+        continue-on-error: true
+      
+      - name: Run pylint
+        run: cd python-app && pylint app.py || true
+        continue-on-error: true
+
+  security:
+    runs-on: ubuntu-latest
+    name: Security Analysis
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'python-app/requirements*.txt'
+      
+      - name: Install dependencies
+        run: |
+          cd python-app
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      
+      - name: Run safety check
+        run: |
+          pip install safety
+          cd python-app && safety check || true
+        continue-on-error: true
