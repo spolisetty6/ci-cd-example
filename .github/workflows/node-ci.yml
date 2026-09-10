@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
       
       - name: Install dependencies
-        run: cd node-app && npm ci
+        run: cd node-app && npm install
       
       - name: Run ESLint
         run: cd node-app && npm run lint
@@ -53,7 +53,7 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
       
       - name: Install dependencies
-        run: cd node-app && npm ci
+        run: cd node-app && npm install
       
       - name: Run tests
         run: cd node-app && npm test -- --coverage
@@ -82,7 +82,7 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
       
       - name: Install dependencies
-        run: cd node-app && npm ci
+        run: cd node-app && npm install
       
       - name: Build application
         run: cd node-app && npm run build
@@ -110,7 +110,7 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
       
       - name: Install dependencies
-        run: cd node-app && npm ci
+        run: cd node-app && npm install
       
       - name: Run npm audit
         run: cd node-app && npm audit --audit-level=moderate
