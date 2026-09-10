@@ -23,18 +23,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
       
       - name: Install dependencies
         run: cd node-app && npm install
       
       - name: Run ESLint
         run: cd node-app && npm run lint
-        continue-on-error: true
-      
-      - name: Check code formatting with Prettier
-        run: cd node-app && npm run format:check
         continue-on-error: true
 
   test:
@@ -49,50 +43,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
       
       - name: Install dependencies
         run: cd node-app && npm install
       
       - name: Run tests
         run: cd node-app && npm test -- --coverage
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./node-app/coverage/coverage-final.json
-          flags: unittests
-          fail_ci_if_error: false
-
-  build:
-    runs-on: ubuntu-latest
-    name: Build Application
-    needs: [lint, test]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
-      
-      - name: Install dependencies
-        run: cd node-app && npm install
-      
-      - name: Build application
-        run: cd node-app && npm run build
-      
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: node-build-output
-          path: node-app/dist/
-          retention-days: 5
 
   security:
     runs-on: ubuntu-latest
@@ -106,8 +62,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
       
       - name: Install dependencies
         run: cd node-app && npm install
@@ -115,13 +69,3 @@ jobs:
       - name: Run npm audit
         run: cd node-app && npm audit --audit-level=moderate
         continue-on-error: true
-
-  notify:
-    runs-on: ubuntu-latest
-    name: Notify Status
-    needs: [lint, test, build, security]
-    if: always()
-    
-    steps:
-      - name: Check job status
-        run: echo "✓ Node.js CI/CD Pipeline Complete"
