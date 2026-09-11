@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  node-app:
+    build:
+      context: .
+      dockerfile: node-app/Dockerfile
+    container_name: ci-cd-node-app
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+    volumes:
+      - ./node-app:/app
+      - /app/node_modules
+      - /app/dist
+    networks:
+      - ci-cd-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  python-app:
+    build:
+      context: .
+      dockerfile: python-app/Dockerfile
+    container_name: ci-cd-python-app
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+      - PORT=5000
+    volumes:
+      - ./python-app:/app
+    networks:
+      - ci-cd-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  ci-cd-network:
+    driver: bridge
