@@ -1,0 +1,135 @@
+name: Docker CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [node-app, python-app]
+    name: Build & Test ${{ matrix.app }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.app }}/Dockerfile
+          push: false
+          tags: ${{ matrix.app }}:test
+      
+      - name: Run container tests
+        run: |
+          docker build -t ${{ matrix.app }}:test -f ./${{ matrix.app }}/Dockerfile .
+          docker run --rm ${{ matrix.app }}:test echo "Container built successfully"
+
+  push-to-registry:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    strategy:
+      matrix:
+        app: [node-app, python-app]
+    name: Push ${{ matrix.app }} to Registry
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.app }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.app }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.app }}:buildcache,mode=max
+
+  docker-compose-test:
+    runs-on: ubuntu-latest
+    name: Docker Compose Test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Start services with docker-compose
+        run: docker-compose up -d
+      
+      - name: Wait for services to be ready
+        run: |
+          sleep 10
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/health && curl -f http://localhost:5000/health; then
+              echo "Services are healthy"
+              break
+            fi
+            echo "Waiting for services... ($i/30)"
+            sleep 2
+          done
+      
+      - name: Test Node.js endpoints
+        run: |
+          curl -f http://localhost:8080/health
+          curl -f http://localhost:8080/ready
+          curl -f http://localhost:8080/api/status
+      
+      - name: Test Python endpoints
+        run: |
+          curl -f http://localhost:5000/health
+          curl -f http://localhost:5000/ready
+          curl -f http://localhost:5000/api/status
+      
+      - name: Show logs
+        if: failure()
+        run: docker-compose logs
+      
+      - name: Cleanup
+        if: always()
+        run: docker-compose down
