@@ -3,8 +3,8 @@ version: '3.8'
 services:
   node-app:
     build:
-      context: .
-      dockerfile: node-app/Dockerfile
+      context: ./node-app
+      dockerfile: Dockerfile
     container_name: ci-cd-node-app
     ports:
       - "8080:8080"
@@ -26,8 +26,8 @@ services:
 
   python-app:
     build:
-      context: .
-      dockerfile: python-app/Dockerfile
+      context: ./python-app
+      dockerfile: Dockerfile
     container_name: ci-cd-python-app
     ports:
       - "5000:5000"

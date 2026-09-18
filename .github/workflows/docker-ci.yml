@@ -31,14 +31,14 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./${{ matrix.app }}
           file: ./${{ matrix.app }}/Dockerfile
           push: false
           tags: ${{ matrix.app }}:test
       
       - name: Run container tests
         run: |
-          docker build -t ${{ matrix.app }}:test -f ./${{ matrix.app }}/Dockerfile .
+          docker build -t ${{ matrix.app }}:test -f ./${{ matrix.app }}/Dockerfile ./${{ matrix.app }}
           docker run --rm ${{ matrix.app }}:test echo "Container built successfully"
 
   push-to-registry:
@@ -83,7 +83,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./${{ matrix.app }}
           file: ./${{ matrix.app }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -99,8 +99,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Start services with docker-compose
-        run: docker-compose up -d
+      - name: Start services with docker compose
+        run: docker compose up -d
       
       - name: Wait for services to be ready
         run: |
@@ -128,8 +128,8 @@ jobs:
       
       - name: Show logs
         if: failure()
-        run: docker-compose logs
+        run: docker compose logs
       
       - name: Cleanup
         if: always()
-        run: docker-compose down
+        run: docker compose down

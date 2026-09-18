@@ -34,7 +34,6 @@ COPY --from=builder /root/.local /root/.local
 
 # Copy application code
 COPY app.py .
-COPY .env.example .env
 
 # Expose port
 EXPOSE 5000
