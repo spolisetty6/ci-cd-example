@@ -99,20 +99,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Start services with docker-compose
-        run: docker-compose up -d
+      - name: Start services with docker compose
+        run: docker compose up -d
       
       - name: Wait for services to be ready
         run: |
+          healthy=false
           sleep 10
           for i in {1..30}; do
             if curl -f http://localhost:8080/health && curl -f http://localhost:5000/health; then
               echo "Services are healthy"
+              healthy=true
               break
             fi
             echo "Waiting for services... ($i/30)"
             sleep 2
           done
+          if [ "$healthy" != "true" ]; then
+            echo "Services did not become healthy in time"
+            exit 1
+          fi
       
       - name: Test Node.js endpoints
         run: |
@@ -128,8 +134,8 @@ jobs:
       
       - name: Show logs
         if: failure()
-        run: docker-compose logs
+        run: docker compose logs
       
       - name: Cleanup
         if: always()
-        run: docker-compose down
+        run: docker compose down
